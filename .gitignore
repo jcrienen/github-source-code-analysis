@@ -1,5 +1,9 @@
 outputFolder/
 outputFolder3/
+testFolder/
+outputFolder2/
+analysis_no_stopwords/
+analysis2/
 analysis/
 test-input.txt
 libjava-tree-sitter.dylib

@@ -15,62 +15,40 @@ class AnalysisType(Enum):
 
 
 class Repository:
-    def __load_all(self, folder, split):
-        self.data = []
+    def __load_all(self, folder):
+        data = {}
         self.target = folder.name.split(" - ")[2]
-
-        split_suffix = configuration.config["split.suffix"].data
 
         for file in os.scandir(folder):
             with open(file, "r") as f:
 
                 filename = os.path.splitext(file.name)[0]
-                if (split and not filename.endswith(split_suffix)) or (not split and filename.endswith(split_suffix)):
-                    continue
+                data[filename] = []
                 for line in f:
-                    data = line.strip()
-                    self.data.append(data)
+                    line = line.strip()
+                    data[filename].append(line)
 
-    def __load_specific(self, folder, analysis_type, split):
-        self.target = folder.name.split(" - ")[2]
-        filename = analysis_type.value
-        filename += "_" + configuration.config["split.suffix"].data if split else ""
-        filename += ".txt"
+        return data
 
-        file = os.path.join(folder, filename)
-        self.data = []
-        try:
-            f = open(file, "r")
-        except FileNotFoundError:
-            print("No file " + filename + " in " + folder.name)
-            return
-        else:
-            with f:
-                for line in f:
-                    data = line.strip()
-                    self.data.append(data)
-
-    def __init__(self, folder, analysis_type, split):
-        if analysis_type == AnalysisType.ALL:
-            self.__load_all(folder, split)
-        else:
-            self.__load_specific(folder, analysis_type, split)
+    def __init__(self, folder):
+        raw = self.__load_all(folder)
 
         stemmer = PorterStemmer()
-        stop_words = set(stopwords.words('english'))#.union(configuration.config["stopwords"].data.split(","))
+        stop_words = set(stopwords.words('english')).union(configuration.config["stopwords"].data.split(","))
 
-        data = [i.lower() for i in self.data]
-        stopped_data = [i for i in data if i not in stop_words]
-        stemmed_data = [stemmer.stem(i) for i in stopped_data]
+        self.data = {}
 
-        self.data = " "
-        self.data = self.data.join([w for w in stemmed_data if len(w) > 3])
+        for analysis_type in raw.keys():
+            data = [i.lower() for i in raw[analysis_type]]
+            stemmed_data = [stemmer.stem(i) for i in data]
+
+            self.data[analysis_type] = " ".join([w for w in stemmed_data if len(w) > 3])
 
 
 class Repositories:
-    def __init__(self, analysis_type, split):
+    def __init__(self):
         self.data = {}
 
         for folder in os.scandir(configuration.config["output-folder"].data):
             if os.path.isdir(folder):
-                self.data[folder.name] = Repository(folder, analysis_type, split)
+                self.data[folder.name] = Repository(folder)
