@@ -17,7 +17,7 @@ class AnalysisType(Enum):
 class Repository:
     def __load_all(self, folder):
         data = {}
-        self.target = folder.name.split(" - ")[2]
+        # self.target = folder.name.split(" - ")[2]
 
         for file in os.scandir(folder):
             with open(file, "r") as f:

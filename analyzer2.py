@@ -10,6 +10,8 @@ from sklearn.decomposition import TruncatedSVD
 from sklearn.manifold import TSNE
 import seaborn as sns
 
+from sklearn.metrics.pairwise import cosine_similarity
+
 import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
 import numpy as np
@@ -36,14 +38,14 @@ def main():
     split = True if configuration.config["split.split"].data == "true" else False
 
     import repository
-    output_folder = "analysis2"
+    output_folder = "analysis"
     if not os.path.exists(output_folder):
         os.makedirs(output_folder)
 
     print("Loading repositories... (this can take a while)")
     repositories = repository.Repositories()
     data = {}
-    target = []
+    # target = []
 
     for repo in repositories.data.values():
         all_data = ""
@@ -58,10 +60,18 @@ def main():
 
         data.setdefault("all", []).append(all_data)
         data.setdefault("all_" + configuration.config["split.suffix"].data, []).append(all_split_data)
-        target.append(repo.target)
+        # target.append(repo.target)
 
-    number_of_topics = len(set(target))
+    number_of_topics = 4  # len(set(target))
     print("Loaded " + str(len(repositories.data)) + " repositories with " + str(number_of_topics) + " total topics!")
+    repos = np.array(list(repositories.data.keys()))
+    queries = []
+    with open("queries.txt", "r") as f:
+        for line in f:
+            line = line.strip()
+            queries.append(line)
+
+    lsa_combined = {}
     for analysis_type in data.keys():
         print("Analyzing " + analysis_type)
         # basic data analysis
@@ -78,7 +88,7 @@ def main():
         words_freq = list(zip(vectorizer.get_feature_names_out(), [x[0] for x in bow.sum(axis=0).T.tolist()]))
         words_freq = np.array(sorted(words_freq, key=lambda x: x[1], reverse=True))
 
-        plot_word_counts(output_folder, folder_name, words_freq, 20)
+        # plot_word_counts(output_folder, folder_name, words_freq, 20)
 
         # LSA
         lsa = TruncatedSVD(n_components=number_of_topics)
@@ -86,37 +96,67 @@ def main():
         lsa_target = np.argmax(lsa_matrix, axis=1).tolist()
         lsa_target_percentages = np.amax(lsa_matrix, axis=1).tolist()
 
+        cos_sim = cosine_similarity(lsa_matrix, lsa_matrix)
+        lsa_top_three = {}
+
+        for i, x in enumerate(cos_sim):
+            # print(i, x)
+            repo_name = repos[i]
+            if repo_name not in queries:
+                continue
+            top_three_index = np.argpartition(x, -2)[-2:]
+            top_three_values = x[top_three_index.astype(int)]
+            top_three_repos = repos[top_three_index.astype(int)]
+            sorted_top_five = [x for _, x in sorted(zip(top_three_values, top_three_repos), reverse=True)][-1:]
+            for k, y in enumerate(sorted_top_five):
+                lsa_top_three.setdefault("Query", []).append(repo_name)
+                lsa_top_three.setdefault("Result", []).append(y)
+                lsa_top_three.setdefault("Rank", []).append(k+1)
+
+                lsa_combined.setdefault("Query", []).append(repo_name)
+                lsa_combined.setdefault("Result", []).append(y)
+                lsa_combined.setdefault("Rank", []).append(k+1)
+                lsa_combined.setdefault("Type", []).append(analysis_type)
+
+        df = pd.DataFrame.from_dict(lsa_top_three)
+        path = os.path.join(output_folder, folder_name + '/Query results.xlsx')
+        df.to_excel(path, index=False)
+
+    df = pd.DataFrame.from_dict(lsa_combined)
+    path = os.path.join(output_folder, 'Combined results.xlsx')
+    df.to_excel(path, index=False)
+
         # TSNE perplexity 20 orig
-        tsne = TSNE(n_components=2, perplexity=20, learning_rate=100, n_iter=2000, random_state=0, angle=0.75)
-        tsne_mat = tsne.fit_transform(lsa_matrix)
+        # tsne = TSNE(n_components=2, perplexity=20, learning_rate=100, n_iter=2000, random_state=0, angle=0.75)
+        # tsne_mat = tsne.fit_transform(lsa_matrix)
 
         # Plotting setup
-        fig = plt.figure(layout="constrained")
-        fig.set_size_inches((18.5, 10.5), forward=False)
-        gs = GridSpec(1, 2, figure=fig)
-        ax1 = fig.add_subplot(gs[0, 0])
-        ax2 = fig.add_subplot(gs[0, 1])
+        # fig = plt.figure(layout="constrained")
+        # fig.set_size_inches((18.5, 10.5), forward=False)
+        # gs = GridSpec(1, 2, figure=fig)
+        # ax1 = fig.add_subplot(gs[0, 0])
+        # ax2 = fig.add_subplot(gs[0, 1])
 
         # Plot axes 1
-        sns.scatterplot(x=tsne_mat[:, 0], y=tsne_mat[:, 1], hue=target, ax=ax1, legend=False, palette="hls")
-        ax1.set_title("t-SNE with manual labels")
+        # sns.scatterplot(x=tsne_mat[:, 0], y=tsne_mat[:, 1], hue=target, ax=ax1, legend=False, palette="hls")
+        # ax1.set_title("t-SNE with manual labels")
 
         # Plot axes 2
-        sns.scatterplot(x=tsne_mat[:, 0], y=tsne_mat[:, 1], hue=lsa_target, ax=ax2, legend=False, palette="hls", size=lsa_target_percentages, sizes=(10, 100))
-        ax2.set_title("t-SNE with LSA Labels")
+        # sns.scatterplot(x=tsne_mat[:, 0], y=tsne_mat[:, 1], hue=lsa_target, ax=ax2, legend=False, palette="hls", size=lsa_target_percentages, sizes=(10, 100))
+        # ax2.set_title("t-SNE with LSA Labels")
 
         # Export
-        plt.suptitle(folder_name)
-        path = os.path.join(output_folder, folder_name + '/t-SNE Plot.png')
-        plt.savefig(path, dpi=200)
-        plt.close(fig)
+        # plt.suptitle(folder_name)
+        # path = os.path.join(output_folder, folder_name + '/t-SNE Plot.png')
+        # plt.savefig(path, dpi=200)
+        # plt.close(fig)
 
-        df = pd.DataFrame(lsa_matrix, columns=["Topic " + str(x) for x in range(number_of_topics)])
-        df.insert(0, "repository", repositories.data.keys())
-        df.insert(1, "target", target)
-        df.insert(2, "lsa", lsa_target)
-        path = os.path.join(output_folder, folder_name + '/LSA Output.csv')
-        df.to_csv(path)
+        # df = pd.DataFrame(lsa_matrix, columns=["Topic " + str(x) for x in range(number_of_topics)])
+        # df.insert(0, "repository", repositories.data.keys())
+        # df.insert(1, "target", target)
+        # df.insert(2, "lsa", lsa_target)
+        # path = os.path.join(output_folder, folder_name + '/LSA Output.csv')
+        # df.to_csv(path)
 
 
 if __name__ == "__main__":
