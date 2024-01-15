@@ -1,7 +1,7 @@
 import os
 from enum import Enum
 import configuration
-from nltk.corpus import stopwords
+#from nltk.corpus import stopwords
 from nltk.stem.snowball import PorterStemmer
 
 
@@ -17,11 +17,9 @@ class AnalysisType(Enum):
 class Repository:
     def __load_all(self, folder):
         data = {}
-        # self.target = folder.name.split(" - ")[2]
-
+        self.target = folder.name.split(" - ")[2]
         for file in os.scandir(folder):
-            with open(file, "r") as f:
-
+            with open(file, "r", encoding="utf8") as f:
                 filename = os.path.splitext(file.name)[0]
                 data[filename] = []
                 for line in f:
@@ -34,7 +32,7 @@ class Repository:
         raw = self.__load_all(folder)
 
         stemmer = PorterStemmer()
-        stop_words = set(stopwords.words('english')).union(configuration.config["stopwords"].data.split(","))
+        # stop_words = set(stopwords.words('english')).union(configuration.config["stopwords"].data.split(","))
 
         self.data = {}
 
@@ -51,4 +49,5 @@ class Repositories:
 
         for folder in os.scandir(configuration.config["output-folder"].data):
             if os.path.isdir(folder):
-                self.data[folder.name] = Repository(folder)
+                repository = Repository(folder)
+                self.data[folder.name] = repository

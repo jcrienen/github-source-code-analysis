@@ -28,6 +28,32 @@ def plot_word_counts(output_folder, foldername, words_freq, k):
     plt.close(fig)
 
 
+# Create a function
+def select_n_components(var_ratio, goal_var: float) -> int:
+    # Set initial variance explained so far
+    total_variance = 0.0
+
+    # Set initial number of features
+    n_components = 0
+
+    # For the explained variance of each feature:
+    for explained_variance in var_ratio:
+
+        # Add the explained variance to the total
+        total_variance += explained_variance
+
+        # Add one to the number of components
+        n_components += 1
+
+        # If we reach our goal level of explained variance
+        if total_variance >= goal_var:
+            # End the loop
+            break
+
+    # Return the number of components
+    return n_components
+
+
 def main():
     arg_length = len(sys.argv)
     if arg_length < 2:
@@ -45,7 +71,7 @@ def main():
     print("Loading repositories... (this can take a while)")
     repositories = repository.Repositories()
     data = {}
-    # target = []
+    target = []
 
     for repo in repositories.data.values():
         all_data = ""
@@ -60,11 +86,12 @@ def main():
 
         data.setdefault("all", []).append(all_data)
         data.setdefault("all_" + configuration.config["split.suffix"].data, []).append(all_split_data)
-        # target.append(repo.target)
+        target.append(repo.target)
 
-    number_of_topics = 4  # len(set(target))
-    print("Loaded " + str(len(repositories.data)) + " repositories with " + str(number_of_topics) + " total topics!")
     repos = np.array(list(repositories.data.keys()))
+    number_of_topics = len(set(target))
+    print("Loaded " + str(len(repositories.data)) + " repositories with " + str(number_of_topics) + " total topics!")
+
     queries = []
     with open("queries.txt", "r") as f:
         for line in f:
@@ -85,17 +112,29 @@ def main():
         bow = vectorizer.fit_transform(data[analysis_type])
 
         # word importance plotting
-        words_freq = list(zip(vectorizer.get_feature_names_out(), [x[0] for x in bow.sum(axis=0).T.tolist()]))
-        words_freq = np.array(sorted(words_freq, key=lambda x: x[1], reverse=True))
+        # words_freq = list(zip(vectorizer.get_feature_names_out(), [x[0] for x in bow.sum(axis=0).T.tolist()]))
+        # words_freq = np.array(sorted(words_freq, key=lambda x: x[1], reverse=True))
 
         # plot_word_counts(output_folder, folder_name, words_freq, 20)
 
         # LSA
         lsa = TruncatedSVD(n_components=number_of_topics)
         lsa_matrix = lsa.fit_transform(bow)
+
+        # Component calculation
+        # lsa_var_ratios = lsa.explained_variance_ratio_
+        # n_of_components = select_n_components(lsa_var_ratios, 0.95)
+
+        # lsa = TruncatedSVD(n_components=n_of_components)
+        # lsa_matrix = lsa.fit_transform(bow)
         lsa_target = np.argmax(lsa_matrix, axis=1).tolist()
         lsa_target_percentages = np.amax(lsa_matrix, axis=1).tolist()
 
+        # TSNE perplexity 20 orig
+        tsne = TSNE(n_components=2, perplexity=25, learning_rate=100, n_iter=2000, random_state=0, angle=0.75)
+        tsne_mat = tsne.fit_transform(lsa_matrix)
+
+        # Cosine similarity
         cos_sim = cosine_similarity(lsa_matrix, lsa_matrix)
         lsa_top_three = {}
 
@@ -111,45 +150,36 @@ def main():
             for k, y in enumerate(sorted_top_five):
                 lsa_top_three.setdefault("Query", []).append(repo_name)
                 lsa_top_three.setdefault("Result", []).append(y)
-                lsa_top_three.setdefault("Rank", []).append(k+1)
+                # lsa_top_three.setdefault("Rank", []).append(k+1)
 
                 lsa_combined.setdefault("Query", []).append(repo_name)
                 lsa_combined.setdefault("Result", []).append(y)
-                lsa_combined.setdefault("Rank", []).append(k+1)
+                # lsa_combined.setdefault("Rank", []).append(k+1)
                 lsa_combined.setdefault("Type", []).append(analysis_type)
 
         df = pd.DataFrame.from_dict(lsa_top_three)
         path = os.path.join(output_folder, folder_name + '/Query results.xlsx')
         df.to_excel(path, index=False)
 
-    df = pd.DataFrame.from_dict(lsa_combined)
-    path = os.path.join(output_folder, 'Combined results.xlsx')
-    df.to_excel(path, index=False)
-
-        # TSNE perplexity 20 orig
-        # tsne = TSNE(n_components=2, perplexity=20, learning_rate=100, n_iter=2000, random_state=0, angle=0.75)
-        # tsne_mat = tsne.fit_transform(lsa_matrix)
-
         # Plotting setup
-        # fig = plt.figure(layout="constrained")
-        # fig.set_size_inches((18.5, 10.5), forward=False)
-        # gs = GridSpec(1, 2, figure=fig)
-        # ax1 = fig.add_subplot(gs[0, 0])
-        # ax2 = fig.add_subplot(gs[0, 1])
+        fig = plt.figure(layout="constrained")
+        fig.set_size_inches((18.5, 10.5), forward=False)
+        gs = GridSpec(1, 2, figure=fig)
+        ax1 = fig.add_subplot(gs[0, 0])
+        ax2 = fig.add_subplot(gs[0, 1])
 
-        # Plot axes 1
-        # sns.scatterplot(x=tsne_mat[:, 0], y=tsne_mat[:, 1], hue=target, ax=ax1, legend=False, palette="hls")
-        # ax1.set_title("t-SNE with manual labels")
+        # Plot
+        sns.scatterplot(x=tsne_mat[:, 0], y=tsne_mat[:, 1], hue=target, ax=ax1, legend=False, palette="hls")
+        ax2.set_title("t-SNE with manual labels")
 
         # Plot axes 2
-        # sns.scatterplot(x=tsne_mat[:, 0], y=tsne_mat[:, 1], hue=lsa_target, ax=ax2, legend=False, palette="hls", size=lsa_target_percentages, sizes=(10, 100))
-        # ax2.set_title("t-SNE with LSA Labels")
+        sns.scatterplot(x=tsne_mat[:, 0], y=tsne_mat[:, 1], hue=lsa_target, ax=ax2, legend=False, palette="hls", size=lsa_target_percentages, sizes=(10, 100))
+        ax2.set_title("t-SNE with LSA Labels")
 
         # Export
-        # plt.suptitle(folder_name)
-        # path = os.path.join(output_folder, folder_name + '/t-SNE Plot.png')
-        # plt.savefig(path, dpi=200)
-        # plt.close(fig)
+        path = os.path.join(output_folder, folder_name + '/t-SNE Plot.png')
+        plt.savefig(path, dpi=200)
+        plt.close(fig)
 
         # df = pd.DataFrame(lsa_matrix, columns=["Topic " + str(x) for x in range(number_of_topics)])
         # df.insert(0, "repository", repositories.data.keys())
@@ -157,6 +187,10 @@ def main():
         # df.insert(2, "lsa", lsa_target)
         # path = os.path.join(output_folder, folder_name + '/LSA Output.csv')
         # df.to_csv(path)
+
+    df = pd.DataFrame.from_dict(lsa_combined)
+    path = os.path.join(output_folder, 'Combined results.xlsx')
+    df.to_excel(path, index=False)
 
 
 if __name__ == "__main__":

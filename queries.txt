@@ -1,20 +1,20 @@
-neo4j-contrib - sparql-plugin
-AKSW - SPARQL2NL
-sayems - java.webdriver
-xebia - Xebium
-seleniumQuery - seleniumQuery
-selenium-cucumber - selenium-cucumber-java
-caelum - vraptor4
-elastic - elasticsearch-support-diagnostics
-SpringDataElasticsearchDevs - spring-data-elasticsearch
-javanna - elasticshell
-mariamhakobyan - elasticsearch-river-kafka
-OpenTSDB - opentsdb-elasticsearch
-codelibs - elasticsearch-cluster-runner
-opendatasoft - elasticsearch-plugin-geoshape
-javanna - elasticsearch-river-solr
-pranab - beymani
-Conductor - kangaroo
-jt6211 - hadoop-dns-mining
-psaravan - JamsMusicPlayer
-markzhai - LyricHere
+foxy999 - piholewidgets - javafx
+guto-alves - loterias-api - rest-api
+plugily-projects - murdermystery - minecraft-plugin
+gyoogle - tech-interview-for-developer - algorithm
+tambapps - p2p-file-sharing - javafx
+auxilor - eco - minecraft-plugin
+bykka - dynamoit - javafx
+gentlecat - opennms-android-client - android
+butzist - activitylauncher - android
+despical - kotl - minecraft-plugin
+bricklou - javafx-launcher - javafx
+kdn251 - interviews - algorithm
+niumoo - javanotes - algorithm
+martingeisse - grumpyrest - rest-api
+josemmo - yamipa - minecraft-plugin
+codedead - opal - javafx
+samb440 - forcepack - minecraft-plugin
+bitcoin-wallet - bitcoin-wallet - android
+yukuku - androidbible - android
+dustinkredmond - fxtrayicon - javafx
