@@ -18,8 +18,11 @@ class Repository:
     def __load_all(self, folder):
         data = {}
         self.target = folder.name.split(" - ")[2]
+        self.failed = False
         for file in os.scandir(folder):
-            with open(file, "r", encoding="utf8") as f:
+            if os.stat(file).st_size == 0:
+                print(file.name + " is empty for " + folder.name)
+            with open(file, "r") as f:
                 filename = os.path.splitext(file.name)[0]
                 data[filename] = []
                 for line in f:
@@ -49,5 +52,4 @@ class Repositories:
 
         for folder in os.scandir(configuration.config["output-folder"].data):
             if os.path.isdir(folder):
-                repository = Repository(folder)
-                self.data[folder.name] = repository
+                self.data[folder.name] = Repository(folder)

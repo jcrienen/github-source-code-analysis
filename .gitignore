@@ -5,6 +5,9 @@ outputFolder2/
 analysis_no_stopwords/
 analysis2/
 analysis/
+venv/
+__pycache__/
+github.zip
 test-input.txt
 libjava-tree-sitter.dylib
 libjava-tree-sitter.so
